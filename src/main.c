@@ -130,7 +130,10 @@ int _main(uint32_t my_id)
             /*
              * The button has been pressed: our LEDs internal states have
              * changed. We notify the LEDs task using a synchronous IPC. The
-             * datapayload we send contains the new LEDs internal state.
+             * datapayload we send contains the boolean value of button_pressed.
+             * Note: in our use case, sending an IPC with an empty buffer to notify a
+             * button push would have been possible. We use a non empty payload only to
+             * show a rich IPC example.
              */
             ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed);
 

@@ -135,13 +135,18 @@ int _main(uint32_t my_id)
              * button push would have been possible. We use a non empty payload only to
              * show a rich IPC example.
              */
-            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed);
-
-            if (ret != SYS_E_DONE) {
-                printf("sys_ipc(): error. Exiting.\n");
-                return 1;
+            
+            while((ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed)) != SYS_E_DONE) {
+                /* The IPC syscall has returned busy, we try to send it again */
+                if (ret == SYS_E_BUSY){
+                    continue;
+                }
+                /* This a critical IPC error */
+                if (ret != SYS_E_DONE) {
+                    printf("sys_ipc(): error. Exiting.\n");
+                    return 1;
+                }
             }
-
             button_pressed = false;
         }
 

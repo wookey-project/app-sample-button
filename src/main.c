@@ -18,6 +18,7 @@ uint64_t    last_isr;   /* Last interrupt in milliseconds */
  * Note : ISRs can use only a restricted set of syscalls. More info on kernel
  *        sources (Ada/ewok-syscalls-handler.adb or syscalls-handler.c)
  */
+
 void exti_button_handler ()
 {
     uint64_t        clock;
@@ -48,13 +49,13 @@ int _main(uint32_t my_id)
 
     ret = sys_init(INIT_GETTASKID, "leds", &id_leds);
     if (ret != SYS_E_DONE) {
-        printf ("Task LEDS not present. Exiting.\n");
+        printf("Task LEDS not present. Exiting.\n");
         return 1;
     }
 
-    memset (&button, 0, sizeof (button));
+    memset(&button, 0, sizeof(button));
 
-    strncpy (button.name, "BUTTON", sizeof (button.name));
+    strncpy(button.name, "BUTTON", sizeof(button.name));
 
     button.gpio_num = 1;
     button.gpios[0].kref.port   = GPIO_PA;
@@ -73,9 +74,9 @@ int _main(uint32_t my_id)
     ret = sys_init(INIT_DEVACCESS, &button, &desc_button);
 
     if (ret) {
-        printf ("error: sys_init() %s\n", strerror(ret));
+        printf("error: sys_init() %s\n", strerror(ret));
     } else {
-        printf ("sys_init() - sucess\n");
+        printf("sys_init() - sucess\n");
     }
 
     /*
@@ -84,11 +85,11 @@ int _main(uint32_t my_id)
 
     ret = sys_init(INIT_DONE);
     if (ret) {
-        printf ("error INIT_DONE: %s\n", strerror(ret));
+        printf("error INIT_DONE: %s\n", strerror(ret));
         return 1;
     }
 
-    printf ("init done.\n");
+    printf("init done.\n");
 
     /*
      * Main task
@@ -96,16 +97,19 @@ int _main(uint32_t my_id)
 
     while (1) {
         if (button_pressed == true) {
+            printf("button has been pressed\n");
             display_leds = (display_leds == ON) ? OFF : ON;
-            printf ("button has been pressed\n");
-            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(display_leds), (const char*)&display_leds);
+
+            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(display_leds), (const char*) &display_leds);
             if (ret != SYS_E_DONE) {
-                printf ("sys_ipc(): error. Exiting.\n");
+                printf("sys_ipc(): error. Exiting.\n");
                 return 1;
             }
+
             button_pressed = false;
         }
-        sys_sleep (500, SLEEP_MODE_INTERRUPTIBLE);
+
+        sys_sleep(500, SLEEP_MODE_INTERRUPTIBLE);
     }
 
     return 0;

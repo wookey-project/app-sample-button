@@ -129,19 +129,23 @@ an active time measurement with a millisecond precision with the `sys_get_systic
 ### Main loop in nominal phase
 
 After the initialization phase, the main function executes a loop that waits for notifications from the ISR
-through the `button_pushed`. When the Button is indeed pushed, the button application sends an IPC to the
-leds application as a notification to switch the blinking LEDs state.
+through the `button_pushed`. When the Button is indeed pushed, the button application **sends an IPC to the
+leds application** as a notification to switch the blinking LEDs state. The IPC is **synchronous** as
+the `IPC_SEND_SYNC` flag illustrates, meaning that the syscall is blocking and schedules the leds task immediately
+(this ensures a reactive wake up of the leds app and LEDs switching when pressing the button).
 
 ```C
-...
+    while (1) {
         if (button_pressed == true) {
             printf("button has been pressed\n");
-            display_leds = (display_leds == ON) ? OFF : ON;
-            /* The button has been pressed: our LEDs internal states have changed.
-             * We notify the LEDs task using a synchronous IPC. The data payload we send
-             * contains the new LEDs internal state.
+
+            /*
+             * The button has been pressed: our LEDs internal states have
+             * changed. We notify the LEDs task using a synchronous IPC. The
+             * datapayload we send contains the new LEDs internal state.
              */
-            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(display_leds), (const char*) &display_leds);
+            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed);
+
             if (ret != SYS_E_DONE) {
                 printf("sys_ipc(): error. Exiting.\n");
                 return 1;
@@ -149,7 +153,7 @@ leds application as a notification to switch the blinking LEDs state.
 
             button_pressed = false;
         }
-...
+        ...
 ```
 
 After sending the IPC to the leds task, the button task **yields** using the `sys_yield` syscall.

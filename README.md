@@ -1,6 +1,6 @@
 # The Button app use case example
 
-This application is coupled with the [leds application](../leds/README.md) as they work together using IPC channels
+This application is coupled with the ['leds' application](../leds/README.md) as they work together using IPC channels
 (Inter-Process Communication).
 
 ## Purpose of the example
@@ -18,7 +18,7 @@ From a user level experience, here is how the two applications should act: two o
 of the board are blinking (green and red, or blue and orange). When the user pushes the user Button
 ('blue' button on the board), the other two LEDs start blinking and the former ones stop.
 
-In addition to the device init and GPIOs related syscalls, two time related syscalls are used in this
+In addition to the device init, GPIOs and IPC related syscalls, two time related syscalls are used in this
 sample (`sys_get_systick` and `sys_yield`).
 
 ## Sketch of the example

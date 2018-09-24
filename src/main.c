@@ -6,7 +6,7 @@
 typedef enum {OFF, ON} led_state_t;
 led_state_t display_leds = ON;
 
-bool        button_pressed = false;
+volatile bool   button_pressed = false;
 
 device_t    button;
 int         desc_button;

@@ -6,16 +6,14 @@
  * Simple example of two user tasks that use GPIOs. The two applications
  * communicate with IPC. One application handles the LEDs, and the other
  * one handles the Button.
- * 
- * The current application handles the Button.
- * It sets an Interrupt Service Routine (ISR) to handle the button push events.
  *
- * By default, the debug USART TX pin is on GPIO PB6 (this is set in the kernel
- * and tranparent to user applications).
+ * The current application handles the Button. It sets an Interrupt Service
+ * Routine (ISR) to handle the button push events.
+ *
+ * Note:
+ *   By default, the debug USART TX pin is on GPIO PB6 (this is set in the
+ *   kernel and tranparent to user applications).
  */
-
-typedef enum {OFF, ON} led_state_t;
-led_state_t display_leds = ON;
 
 volatile bool   button_pressed = false;
 
@@ -29,10 +27,10 @@ uint64_t    last_isr;   /* Last interrupt in milliseconds */
  * Note : ISRs can use only a restricted set of syscalls. More info on kernel
  *        sources (Ada/ewok-syscalls-handler.adb or syscalls-handler.c)
  *
- * Because of possible 'bouncing' issues when the button is pressed, one must take care of
- * IRQ bursts. Hence the usage of sys_get_systick to wait at least 20 milliseconds
- * before notifying that the button is pushed (this is a very basic way of
- * handling the debouncing, and is only here as an example!).
+ * Because of possible 'bouncing' issues when the button is pressed, one must
+ * take care of IRQ bursts. Hence the usage of sys_get_systick to wait at least
+ * 20 milliseconds before notifying that the button is pushed (this is a very
+ * basic way of handling the debouncing, and is only here as an example!).
  */
 void exti_button_handler ()
 {
@@ -70,14 +68,16 @@ int _main(uint32_t my_id)
     }
 
     /*
-     * Configuring the Button GPIO. Note: the related clocks are automatically set
-     * by the kernel.
-     * We configure one GPIO here corresponding to the STM32 Discovery F407 'blue' push button (B1):
+     * Configuring the Button GPIO. Note: the related clocks are automatically
+     * set by the kernel.
+     * We configure one GPIO here corresponding to the STM32 Discovery F407
+     * 'blue' push button (B1):
      *     - PA0 is configured in input mode
      *
-     * NOTE: we need to setup an ISR handler (exti_button_handler) to asynchronously capture the button events.
-     * We only focus on the button push event, we use the GPIO_EXTI_TRIGGER_RISE configuration
-     * of the EXTI trigger.
+     * NOTE: we need to setup an ISR handler (exti_button_handler) to
+     * asynchronously capture the button events. We only focus on the button
+     * push event, we use the GPIO_EXTI_TRIGGER_RISE configuration of the EXTI
+     * trigger.
      */
 
     memset(&button, 0, sizeof(button));
@@ -97,7 +97,8 @@ int _main(uint32_t my_id)
     button.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_RISE;
     button.gpios[0].exti_handler = (user_handler_t) exti_button_handler;
 
-    /* Now that the button device structure is filled, use sys_init to initialize it */
+    /* Now that the button device structure is filled, use sys_init to
+     * initialize it */
     ret = sys_init(INIT_DEVACCESS, &button, &desc_button);
 
     if (ret) {
@@ -125,12 +126,14 @@ int _main(uint32_t my_id)
     while (1) {
         if (button_pressed == true) {
             printf("button has been pressed\n");
-            display_leds = (display_leds == ON) ? OFF : ON;
-            /* The button has been pressed: our LEDs internal states have changed.
-             * We notify the LEDs task using a synchronous IPC. The data payload we send
-             * contains the new LEDs internal state.
+
+            /*
+             * The button has been pressed: our LEDs internal states have
+             * changed. We notify the LEDs task using a synchronous IPC. The
+             * datapayload we send contains the new LEDs internal state.
              */
-            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(display_leds), (const char*) &display_leds);
+            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed);
+
             if (ret != SYS_E_DONE) {
                 printf("sys_ipc(): error. Exiting.\n");
                 return 1;
@@ -138,6 +141,7 @@ int _main(uint32_t my_id)
 
             button_pressed = false;
         }
+
         /* Yield until the kernel awakes us for a button push */
         sys_yield();
     }

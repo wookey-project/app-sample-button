@@ -142,15 +142,23 @@ the `IPC_SEND_SYNC` flag illustrates, meaning that the syscall is blocking and s
             /*
              * The button has been pressed: our LEDs internal states have
              * changed. We notify the LEDs task using a synchronous IPC. The
-             * datapayload we send contains the new LEDs internal state.
+             * datapayload we send contains the boolean value of button_pressed.
+             * Note: in our use case, sending an IPC with an empty buffer to notify a
+             * button push would have been possible. We use a non empty payload only to
+             * show a rich IPC example.
              */
-            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed);
 
-            if (ret != SYS_E_DONE) {
-                printf("sys_ipc(): error. Exiting.\n");
-                return 1;
+            while((ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed)) != SYS_E_DONE) {
+                /* The IPC syscall has returned busy, we try to send it again */
+                if (ret == SYS_E_BUSY){
+                    continue;
+                }
+                /* This a critical IPC error (SYS_E_DENIED or SYS_E_INVAL) */
+                else {
+                    printf("sys_ipc(): error. Exiting.\n");
+                    return 1;
+                }
             }
-
             button_pressed = false;
         }
         ...

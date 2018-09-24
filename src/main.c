@@ -141,8 +141,8 @@ int _main(uint32_t my_id)
                 if (ret == SYS_E_BUSY){
                     continue;
                 }
-                /* This a critical IPC error */
-                if (ret != SYS_E_DONE) {
+                /* This a critical IPC error (SYS_E_DENIED or SYS_E_INVAL) */
+                else {
                     printf("sys_ipc(): error. Exiting.\n");
                     return 1;
                 }

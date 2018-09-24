@@ -2,8 +2,11 @@
 #include "api/types.h"
 #include "api/print.h"
 
-enum button_state_t {OFF, ON};
-enum button_state_t button_state = ON;
+
+typedef enum {OFF, ON} led_state_t;
+led_state_t display_leds = ON;
+
+bool        button_pressed = false;
 
 device_t    button;
 int         desc_button;
@@ -31,14 +34,13 @@ void exti_button_handler ()
 	    }
     }
 
-    button_state = (button_state == ON) ? OFF : ON;
     last_isr = clock;
+    button_pressed = true;
 }
 
 
 int _main(uint32_t my_id)
 {
-    char            msg;
     e_syscall_ret   ret;
     uint8_t         id_leds;
 
@@ -93,15 +95,15 @@ int _main(uint32_t my_id)
      */
 
     while (1) {
-        if (button_state == ON) {
-            msg = 1;
-        } else {
-            msg = 0;
-        }
-        ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(msg), (const char*)&msg);
-        if (ret != SYS_E_DONE) {
-            printf ("sys_ipc(): error. Exiting.\n");
-            return 1;
+        if (button_pressed == true) {
+            display_leds = (display_leds == ON) ? OFF : ON;
+            printf ("button has been pressed\n");
+            ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(display_leds), (const char*)&display_leds);
+            if (ret != SYS_E_DONE) {
+                printf ("sys_ipc(): error. Exiting.\n");
+                return 1;
+            }
+            button_pressed = false;
         }
         sys_sleep (500, SLEEP_MODE_INTERRUPTIBLE);
     }

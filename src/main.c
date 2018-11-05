@@ -95,6 +95,7 @@ int _main(uint32_t my_id)
     button.gpios[0].type        = GPIO_PIN_OTYPER_PP;
     button.gpios[0].speed       = GPIO_PIN_LOW_SPEED;
     button.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_RISE;
+    button.gpios[0].exti_lock    = GPIO_EXTI_UNLOCKED;
     button.gpios[0].exti_handler = (user_handler_t) exti_button_handler;
 
     /* Now that the button device structure is filled, use sys_init to

@@ -1,6 +1,9 @@
-#include "api/syscall.h"
-#include "api/types.h"
-#include "api/print.h"
+#include "libc/syscall.h"
+#include "libc/types.h"
+#include "libc/stdio.h"
+#include "libc/string.h"
+
+#include "generated/button.h"
 
 /*
  * Simple example of two user tasks that use GPIOs. The two applications
@@ -85,8 +88,8 @@ int _main(uint32_t my_id)
     strncpy(button.name, "BUTTON", sizeof(button.name));
 
     button.gpio_num = 1;
-    button.gpios[0].kref.port   = GPIO_PA;
-    button.gpios[0].kref.pin    = 0;
+    button.gpios[0].kref.port   = button_dev_infos.gpios[BUTTON].port;
+    button.gpios[0].kref.pin    = button_dev_infos.gpios[BUTTON].pin;
     button.gpios[0].mask        = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD |
                                   GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED |
                                   GPIO_MASK_SET_EXTI;
@@ -136,7 +139,7 @@ int _main(uint32_t my_id)
              * button push would have been possible. We use a non empty payload only to
              * show a rich IPC example.
              */
-            
+
             while((ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed)) != SYS_E_DONE) {
                 /* The IPC syscall has returned busy, we try to send it again */
                 if (ret == SYS_E_BUSY){

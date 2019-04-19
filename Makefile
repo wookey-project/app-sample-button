@@ -1,3 +1,7 @@
+###################################################################
+# about the application name and path
+###################################################################
+
 APP_NAME ?= button
 DIR_NAME = button
 
@@ -6,83 +10,134 @@ BIN_NAME = $(APP_NAME).bin
 HEX_NAME = $(APP_NAME).hex
 ELF_NAME = $(APP_NAME).elf
 
-######### Metadata ##########
-ifeq ($(APP_NAME),button)
-    IMAGE_TYPE = IMAGE_TYPE0
-else
-    IMAGE_TYPE = IMAGE_TYPE1
-endif
-
-VERSION = 1
-#############################
-
--include $(PROJ_FILES)/Makefile.conf
--include $(PROJ_FILES)/Makefile.gen
+# SDK helper Makefiles inclusion
+-include $(PROJ_FILES)/m_config.mk
+-include $(PROJ_FILES)/m_generic.mk
 
 # use an app-specific build dir
 APP_BUILD_DIR = $(BUILD_DIR)/apps/$(DIR_NAME)
 
-CFLAGS += -Isrc/ -Iinc/
-CFLAGS += $(APPS_CFLAGS)
-CFLAGS += -MMD -MP
+###################################################################
+# About the compilation flags
+###################################################################
 
-LDFLAGS += $(AFLAGS) -fno-builtin -nostdlib -nostartfiles
+CFLAGS := $(APPS_CFLAGS)
+CFLAGS += -Isrc/ -MMD -MP
 
-EXTRA_LDFLAGS ?= -Tbutton.fw1.ld
-LDFLAGS += $(EXTRA_LDFLAGS) -L$(APP_BUILD_DIR) -fno-builtin -nostdlib
-LD_LIBS += -lstd -L$(APP_BUILD_DIR)
+###################################################################
+# About the link step
+###################################################################
 
-BUILD_DIR ?= $(PROJ_FILE)build
+LDFLAGS += $(EXTRA_LDFLAGS) -L$(APP_BUILD_DIR)
+LD_LIBS += -lstd
+
+###################################################################
+# okay let's list our source files and generated files now
+###################################################################
+
 
 CSRC_DIR = src
 SRC = $(wildcard $(CSRC_DIR)/*.c)
 OBJ = $(patsubst %.c,$(APP_BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
 
-#Rust sources files
-RSSRC_DIR=rust/src
-RSRC= $(wildcard $(RSRCDIR)/*.rs)
-ROBJ = $(patsubst %.rs,$(APP_BUILD_DIR)/rust/%.o,$(RSRC))
-
-#ada sources files
-ASRC_DIR = ada/src
-ASRC= $(wildcard $(ASRC_DIR)/*.adb)
-AOBJ = $(patsubst %.adb,$(APP_BUILD_DIR)/ada/%.o,$(ASRC))
-
-OUT_DIRS = $(dir $(DRVOBJ)) $(dir $(BOARD_OBJ)) $(dir $(SOC_OBJ)) $(dir $(CORE_OBJ)) $(dir $(AOBJ)) $(dir $(OBJ)) $(dir $(ROBJ))
+OUT_DIRS = $(dir $(OBJ))
 
 LDSCRIPT_NAME = $(APP_BUILD_DIR)/$(APP_NAME).ld
 
 # file to (dist)clean
 # objects and compilation related
-TODEL_CLEAN += $(ROBJ) $(OBJ) $(SOC_OBJ) $(DRVOBJ) $(BOARD_OBJ) $(CORE_OBJ) $(DEP) $(TESTSDEP) $(SOC_DEP) $(DRVDEP) $(BOARD_DEP) $(CORE_DEP) $(LDSCRIPT_NAME)
+TODEL_CLEAN += $(OBJ) $(DEP) $(LDSCRIPT_NAME)
 # targets
 TODEL_DISTCLEAN += $(APP_BUILD_DIR)
 
 .PHONY: app
 
-#############################################################
-# build targets (driver, core, SoC, Board... and local)
+############################################################
+# explicit dependency on the application libs and drivers
+# compiling the application requires the compilation of its
+# dependencies
+###########################################################
 
-all: $(APP_BUILD_DIR) app
+## library dependencies
+LIBDEP := $(BUILD_DIR)/libs/libstd/libstd.a
 
+libdep: $(LIBDEP)
+
+$(LIBDEP):
+	$(Q)$(MAKE) -C $(PROJ_FILES)libs/$(patsubst lib%.a,%,$(notdir $@))
+
+
+# drivers dependencies
+SOCDRVDEP :=
+
+socdrvdep: $(SOCDRVDEP)
+
+$(SOCDRVDEP):
+	$(Q)$(MAKE) -C $(PROJ_FILES)drivers/socs/$(SOC)/$(patsubst lib%.a,%,$(notdir $@))
+
+# board drivers dependencies
+BRDDRVDEP    :=
+
+brddrvdep: $(BRDDRVDEP)
+
+$(BRDDRVDEP):
+	$(Q)$(MAKE) -C $(PROJ_FILES)drivers/boards/$(BOARD)/$(patsubst lib%.a,%,$(notdir $@))
+
+# external dependencies
+EXTDEP    :=
+
+extdep: $(EXTDEP)
+
+$(EXTDEP):
+	$(Q)$(MAKE) -C $(PROJ_FILES)externals
+
+
+alldeps: libdep socdrvdep brddrvdep extdep
+
+##########################################################
+# generic targets of all applications makefiles
+##########################################################
+
+show:
+	@echo
+	@echo "\t\tAPP_BUILD_DIR\t=> " $(APP_BUILD_DIR)
+	@echo
+	@echo "C sources files:"
+	@echo "\t\tSRC\t=> " $(SRC)
+	@echo "\t\tOBJ\t=> " $(OBJ)
+	@echo "\t\tDEP\t=> " $(DEP)
+	@echo
+	@echo "\t\tCFG\t=> " $(CFLAGS)
+
+
+# all (default) build the app
+all: $(APP_BUILD_DIR) alldeps app
+
+
+# app build the hex and elf binaries
 app: $(APP_BUILD_DIR)/$(ELF_NAME) $(APP_BUILD_DIR)/$(HEX_NAME)
 
+# objet files and dependencies
 $(APP_BUILD_DIR)/%.o: %.c
 	$(call if_changed,cc_o_c)
 
-# ELF
-$(APP_BUILD_DIR)/$(ELF_NAME): $(ROBJ) $(OBJ) $(SOBJ) $(DRVOBJ) $(BOARD_OBJ) $(CORE_OBJ) $(SOC_OBJ) $(BUILD_DIR)/libs/libstd/libstd.a
+# ELF file dependencies. libs are build separately and before.
+# Be sure to add the libs to your config file!
+$(APP_BUILD_DIR)/$(ELF_NAME): $(OBJ)
 	$(call if_changed,link_o_target)
 
-# HEX
+# same for hex
 $(APP_BUILD_DIR)/$(HEX_NAME): $(APP_BUILD_DIR)/$(ELF_NAME)
 	$(call if_changed,objcopy_ihex)
 
-# BIN
+# same for bin. bin is not build but you can add it if you whish
 $(APP_BUILD_DIR)/$(BIN_NAME): $(APP_BUILD_DIR)/$(ELF_NAME)
 	$(call if_changed,objcopy_bin)
 
+# special target to create the application build directory
 $(APP_BUILD_DIR):
 	$(call cmd,mkdir)
 
+
+-include $(DEP)

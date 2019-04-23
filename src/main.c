@@ -18,11 +18,11 @@
  *   kernel and tranparent to user applications).
  */
 
-volatile bool   button_pressed = false;
+volatile bool button_pressed = false;
 
-device_t    button;
-int         desc_button;
-uint64_t    last_isr;   /* Last interrupt in milliseconds */
+device_t button;
+int     desc_button;
+uint64_t last_isr;              /* Last interrupt in milliseconds */
 
 /*
  * User defined ISR to execute when the blue button (gpio PA0) on the STM32
@@ -35,20 +35,20 @@ uint64_t    last_isr;   /* Last interrupt in milliseconds */
  * 20 milliseconds before notifying that the button is pushed (this is a very
  * basic way of handling the debouncing, and is only here as an example!).
  */
-void exti_button_handler ()
+void exti_button_handler()
 {
-    uint64_t        clock;
-    e_syscall_ret   ret;
+    uint64_t clock;
+    e_syscall_ret ret;
 
     /* Syscall to get the elapsed cpu time since the board booted */
     ret = sys_get_systick(&clock, PREC_MILLI);
 
     if (ret == SYS_E_DONE) {
-	    /* Debounce time (in ms) */
-	    if (clock - last_isr < 20) {
-	        last_isr = clock;
-	        return;
-	    }
+        /* Debounce time (in ms) */
+        if (clock - last_isr < 20) {
+            last_isr = clock;
+            return;
+        }
     }
 
     last_isr = clock;
@@ -58,8 +58,8 @@ void exti_button_handler ()
 
 int _main(uint32_t my_id)
 {
-    e_syscall_ret   ret;
-    uint8_t         id_leds;
+    e_syscall_ret ret;
+    uint8_t id_leds;
 
     printf("Hello, I'm BUTTON task. My id is %x\n", my_id);
 
@@ -88,17 +88,16 @@ int _main(uint32_t my_id)
     strncpy(button.name, "BUTTON", sizeof(button.name));
 
     button.gpio_num = 1;
-    button.gpios[0].kref.port   = button_dev_infos.gpios[BUTTON].port;
-    button.gpios[0].kref.pin    = button_dev_infos.gpios[BUTTON].pin;
-    button.gpios[0].mask        = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD |
-                                  GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED |
-                                  GPIO_MASK_SET_EXTI;
-    button.gpios[0].mode        = GPIO_PIN_INPUT_MODE;
-    button.gpios[0].pupd        = GPIO_PULLDOWN;
-    button.gpios[0].type        = GPIO_PIN_OTYPER_PP;
-    button.gpios[0].speed       = GPIO_PIN_LOW_SPEED;
+    button.gpios[0].kref.port = button_dev_infos.gpios[BUTTON].port;
+    button.gpios[0].kref.pin = button_dev_infos.gpios[BUTTON].pin;
+    button.gpios[0].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD |
+        GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED | GPIO_MASK_SET_EXTI;
+    button.gpios[0].mode = GPIO_PIN_INPUT_MODE;
+    button.gpios[0].pupd = GPIO_PULLDOWN;
+    button.gpios[0].type = GPIO_PIN_OTYPER_PP;
+    button.gpios[0].speed = GPIO_PIN_LOW_SPEED;
     button.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_RISE;
-    button.gpios[0].exti_lock    = GPIO_EXTI_UNLOCKED;
+    button.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
     button.gpios[0].exti_handler = (user_handler_t) exti_button_handler;
 
     /* Now that the button device structure is filled, use sys_init to
@@ -140,16 +139,12 @@ int _main(uint32_t my_id)
              * show a rich IPC example.
              */
 
-            while((ret = sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed), (const char*) &button_pressed)) != SYS_E_DONE) {
-                /* The IPC syscall has returned busy, we try to send it again */
-                if (ret == SYS_E_BUSY){
-                    continue;
-                }
-                /* This a critical IPC error (SYS_E_DENIED or SYS_E_INVAL) */
-                else {
-                    printf("sys_ipc(): error. Exiting.\n");
-                    return 1;
-                }
+            ret =
+                sys_ipc(IPC_SEND_SYNC, id_leds, sizeof(button_pressed),
+                        (const char *) &button_pressed);
+            if (ret != SYS_E_DONE) {
+                printf("sys_ipc(): error. Exiting.\n");
+                return 1;
             }
             button_pressed = false;
         }
@@ -160,4 +155,3 @@ int _main(uint32_t my_id)
 
     return 0;
 }
-

@@ -21,7 +21,7 @@
 volatile bool button_pressed = false;
 
 device_t button;
-int     desc_button;
+int      desc_button;
 uint64_t last_isr;              /* Last interrupt in milliseconds */
 
 /*
@@ -100,8 +100,11 @@ int _main(uint32_t my_id)
     button.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
     button.gpios[0].exti_handler = (user_handler_t) exti_button_handler;
 
-    /* Now that the button device structure is filled, use sys_init to
-     * initialize it */
+    /*
+     * Now that the button device structure is filled, use sys_init() to
+     * initialize it
+     */
+
     ret = sys_init(INIT_DEVACCESS, &button, &desc_button);
 
     if (ret) {
@@ -110,10 +113,7 @@ int _main(uint32_t my_id)
         printf("sys_init() - sucess\n");
     }
 
-    /*
-     * Devices and ressources registration is finished
-     */
-
+    /* Finishing devices and ressources registration */
     ret = sys_init(INIT_DONE);
     if (ret) {
         printf("error INIT_DONE: %s\n", strerror(ret));

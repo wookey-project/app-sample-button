@@ -23,6 +23,8 @@ volatile bool button_pressed = false;
 device_t button;
 int      desc_button;
 uint64_t last_isr;              /* Last interrupt in milliseconds */
+uint32_t timeout = 0;
+
 
 /*
  * User defined ISR to execute when the blue button (gpio PA0) on the STM32
@@ -40,12 +42,14 @@ void exti_button_handler()
     uint64_t clock;
     e_syscall_ret ret;
 
+    sys_cfg(CFG_GPIO_UNLOCK_EXTI, (uint8_t)button.gpios[0].kref.val);
+
     /* Syscall to get the elapsed cpu time since the board booted */
     ret = sys_get_systick(&clock, PREC_MILLI);
 
     if (ret == SYS_E_DONE) {
-        /* Debounce time (in ms) */
-        if (clock - last_isr < 20) {
+        /* Debounce (time in ms) */
+        if (clock - last_isr < 100) {
             last_isr = clock;
             return;
         }
@@ -53,6 +57,11 @@ void exti_button_handler()
 
     last_isr = clock;
     button_pressed = true;
+}
+
+void alarm_handler(uint32_t ms)
+{
+    timeout = ms;
 }
 
 
@@ -97,7 +106,7 @@ int _main(uint32_t my_id)
     button.gpios[0].type = GPIO_PIN_OTYPER_PP;
     button.gpios[0].speed = GPIO_PIN_LOW_SPEED;
     button.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_RISE;
-    button.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
+    button.gpios[0].exti_lock = GPIO_EXTI_LOCKED;
     button.gpios[0].exti_handler = (user_handler_t) exti_button_handler;
 
     /*
@@ -126,8 +135,20 @@ int _main(uint32_t my_id)
      * Main task
      */
 
+    timeout = 0;
+    sys_alarm(5000, (char*) &alarm_handler);
+
     while (1) {
+
+        if (timeout) {
+            printf("Timeout! Please, press the blue button...\n", timeout);
+            timeout = 0;
+            sys_alarm(5000, (char*) &alarm_handler);
+        }
+
         if (button_pressed == true) {
+            sys_alarm(0, 0); /* The alarm is removed */
+
             printf("button has been pressed\n");
 
             /*
@@ -150,7 +171,7 @@ int _main(uint32_t my_id)
         }
 
         /* Yield until the kernel awakes us for a button push */
-        sys_yield();
+        //sys_yield();
     }
 
     return 0;
